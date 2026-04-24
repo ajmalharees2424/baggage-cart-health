@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Baggage Cart Health</title>
+    <style>
+        :root {
+            --bg: #f5f5f5;
+            --card-bg: #ffffff;
+            --text: #1a1a1a;
+            --text-secondary: #666666;
+            --border: #e0e0e0;
+            --ok: #4CAF50;
+            --minor: #FF9800;
+            --unsafe: #F44336;
+            --accent-blue: #2196F3;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1);
+            --radius: 10px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Header */
+        .header {
+            background: #fff;
+            padding: 12px 16px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        /* Search */
+        .search-container {
+            padding: 12px 16px;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+        }
+        .search-input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            font-size: 15px;
+            background: #f9f9f9;
+            outline: none;
+            transition: border 0.2s;
+        }
+        .search-input:focus {
+            border-color: var(--accent-blue);
+            background: #fff;
+        }
+
+        /* Tab bar */
+        .tabs {
+            display: flex;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 56px;
+            z-index: 99;
+        }
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 12px 8px;
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: var(--text-secondary);
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            letter-spacing: -0.2px;
+            white-space: nowrap;
+        }
+        .tab.active {
+            color: var(--text);
+            border-bottom-color: var(--accent-blue);
+        }
+        .tab-badge {
+            display: inline-block;
+            background: #eee;
+            border-radius: 10px;
+            padding: 2px 8px;
+            font-size: 11px;
+            margin-left: 4px;
+            font-weight: 500;
+        }
+        .tab.active .tab-badge {
+            background: #e3f2fd;
+            color: var(--accent-blue);
+        }
+
+        /* List */
+        .list {
+            padding: 8px 16px 100px;
+            background: #fff;
+            min-height: 60vh;
+        }
+        .cart-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.15s;
+            gap: 12px;
+            text-decoration: none;
+            color: inherit;
+        }
+        .cart-item:active {
+            background: #f5f5f5;
+            margin: 0 -16px;
+            padding: 14px 16px;
+        }
+        .cart-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+            font-weight: 700;
+        }
+        .cart-icon.ok { background: #E8F5E9; color: var(--ok); }
+        .cart-icon.minor { background: #FFF3E0; color: var(--minor); }
+        .cart-icon.unsafe { background: #FFEBEE; color: var(--unsafe); }
+        .cart-info { flex: 1; min-width: 0; }
+        .cart-id { font-weight: 600; font-size: 15px; letter-spacing: -0.2px; }
+        .cart-type { font-size: 13px; color: var(--text-secondary); }
+        .cart-meta {
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+        .status-dot.ok { background: var(--ok); }
+        .status-dot.minor { background: var(--minor); }
+        .status-dot.unsafe { background: var(--unsafe); }
+        .status-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .status-label.ok { color: var(--ok); }
+        .status-label.minor { color: var(--minor); }
+        .status-label.unsafe { color: var(--unsafe); }
+        .cart-location {
+            font-size: 11px;
+            color: #999;
+            margin-top: 2px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        .empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
+
+        /* Detail Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+            display: flex;
+            align-items: flex-end;
+            animation: fadeIn 0.2s;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal {
+            background: #fff;
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            border-radius: 16px 16px 0 0;
+            padding: 8px 0 24px;
+            animation: slideUp 0.3s ease;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .modal-handle {
+            width: 36px;
+            height: 4px;
+            background: #ddd;
+            border-radius: 2px;
+            margin: 0 auto 16px;
+        }
+        .modal-header {
+            padding: 0 20px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .modal-header h2 {
+            font-size: 22px;
+            font-weight: 700;
+        }
+        .modal-header .modal-type {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        .modal-body { padding: 16px 20px; }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f5f5f5;
+            font-size: 14px;
+        }
+        .detail-label { color: var(--text-secondary); }
+        .detail-value { font-weight: 500; }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            padding: 16px 20px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            flex: 1;
+            min-width: 80px;
+            padding: 14px 12px;
+            border: 2px solid transparent;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: center;
+            letter-spacing: -0.2px;
+        }
+        .btn:active { transform: scale(0.96); }
+        .btn-ok { background: #E8F5E9; color: var(--ok); border-color: var(--ok); }
+        .btn-ok.active-btn { background: var(--ok); color: #fff; }
+        .btn-minor { background: #FFF3E0; color: var(--minor); border-color: var(--minor); }
+        .btn-minor.active-btn { background: var(--minor); color: #fff; }
+        .btn-unsafe { background: #FFEBEE; color: var(--unsafe); border-color: var(--unsafe); }
+        .btn-unsafe.active-btn { background: var(--unsafe); color: #fff; }
+        .btn-close {
+            width: 100%;
+            margin-top: 8px;
+            padding: 14px;
+            background: #f5f5f5;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            color: #666;
+        }
+
+        /* Footer nav */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 480px;
+            background: #fff;
+            border-top: 1px solid var(--border);
+            display: flex;
+            z-index: 150;
+            box-shadow: 0 -1px 3px rgba(0,0,0,0.05);
+        }
+        .nav-item {
+            flex: 1;
+            text-align: center;
+            padding: 10px 4px 8px;
+            font-size: 10px;
+            color: #999;
+            cursor: pointer;
+            border: none;
+            background: none;
+            transition: color 0.2s;
+        }
+        .nav-item .nav-icon { font-size: 20px; display: block; margin-bottom: 2px; }
+        .nav-item.active { color: var(--accent-blue); }
+
+        /* QR button */
+        .qr-fab {
+            position: fixed;
+            bottom: 80px;
+            right: calc(50% - 210px);
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            color: #fff;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(33,150,243,0.4);
+            z-index: 160;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        @media (max-width: 480px) {
+            .qr-fab { right: 16px; }
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 300;
+            animation: toastIn 0.3s ease, toastOut 0.3s ease 1.7s forwards;
+            pointer-events: none;
+        }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
+        @keyframes toastOut { to { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <h1>🚛 Baggage Cart Assets</h1>
+    </div>
+
+    <!-- Search -->
+    <div class="search-container">
+        <input type="text" class="search-input" id="searchInput" placeholder="🔍 Search by Asset ID or Location...">
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs" id="tabs">
+        <button class="tab active" data-tab="all">All<span class="tab-badge" id="count-all">20</span></button>
+        <button class="tab" data-tab="unsafe">Unsafe<span class="tab-badge" id="count-unsafe">3</span></button>
+        <button class="tab" data-tab="minor">Minor Issue<span class="tab-badge" id="count-minor">5</span></button>
+        <button class="tab" data-tab="ok">OK Assets<span class="tab-badge" id="count-ok">12</span></button>
+    </div>
+
+    <!-- Cart List -->
+    <div class="list" id="cartList"></div>
+
+    <!-- QR Scan FAB -->
+    <button class="qr-fab" id="qrFab" title="Scan QR Code">📷</button>
+
+    <!-- Bottom Nav -->
+    <div class="bottom-nav">
+        <button class="nav-item active" data-nav="all">
+            <span class="nav-icon">📋</span>All Assets
+        </button>
+        <button class="nav-item" data-nav="unsafe">
+            <span class="nav-icon">🔴</span>Unsafe
+        </button>
+        <button class="nav-item" data-nav="minor">
+            <span class="nav-icon">🟠</span>Minor Issue
+        </button>
+        <button class="nav-item" data-nav="ok">
+            <span class="nav-icon">🟢</span>OK Assets
+        </button>
+    </div>
+
+    <!-- Detail Modal (hidden by default) -->
+    <div class="modal-overlay" id="modalOverlay" style="display:none;">
+        <div class="modal" id="modal">
+            <div class="modal-handle"></div>
+            <div class="modal-header">
+                <h2 id="modalTitle">CART-001</h2>
+                <span class="modal-type">Baggage Cart</span>
+            </div>
+            <div class="modal-body">
+                <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value" id="modalStatus">OK</span></div>
+                <div class="detail-row"><span class="detail-label">Last Updated</span><span class="detail-value" id="modalUpdated">-</span></div>
+                <div class="detail-row"><span class="detail-label">Issue Count</span><span class="detail-value" id="modalIssues">0</span></div>
+                <div class="detail-row"><span class="detail-label">Location</span><span class="detail-value" id="modalLocation">-</span></div>
+                <div class="detail-row" id="modalNotesRow" style="display:none;"><span class="detail-label">Notes</span><span class="detail-value" id="modalNotes">-</span></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-ok" id="btnOk">✓ OK</button>
+                <button class="btn btn-minor" id="btnMinor">⚠ Minor Issue</button>
+                <button class="btn btn-unsafe" id="btnUnsafe">✕ Unsafe</button>
+            </div>
+            <button class="btn-close" id="btnClose">Close</button>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toastContainer"></div>
+
+    <script>
+        // ============ DATA STORE ============
+        // In a production app, this could come from an API, JSON file, or localStorage
+        const INITIAL_DATA = [
+            { id: "CART-001", type: "Baggage Cart", status: "OK", lastUpdated: "2026-04-23 09:00", issueCount: 0, location: "Zone A", notes: "" },
+            { id: "CART-002", type: "Baggage Cart", status: "Minor", lastUpdated: "2026-04-23 08:45", issueCount: 1, location: "Zone B", notes: "Loose wheel" },
+            { id: "CART-003", type: "Baggage Cart", status: "OK", lastUpdated: "2026-04-23 08:50", issueCount: 0, location: "Zone A", notes: "" },
+            { id: "CART-004", type: "Baggage Cart", status: "Unsafe", lastUpdated: "2026-04-23 08:30", issueCount: 3, location: "Zone C", notes: "Broken hitch" },
+            { id: "CART-005", type: "Baggage Cart", status: "OK", lastUpdated: "2026-04-23 09:05", issueCount: 0, location: "Zone A", notes: "" },
+            { id: "CART-006", type: "Baggage Cart", status: "Minor", lastUpdated: "2026-04-23 08:40", issueCount: 2, location: "Zone B", notes: "Flat tire" },
+            { id: "CART-007", type: "Baggage Cart", status: "OK", lastUpdated: "2026-04-23 08:55", issueCount: 0, location: "Zone A", notes: "" },
+            { id: "CART-008", type: "Baggage Cart", status: "OK", lastUpdated: "2026-04-23 09:10", issueCount: 0, location: "Zone D", notes: "" },
+            { id: "CART-009", type: "Baggage Cart", status: "Unsafe", lastUpdated: "2026-04-23 08:20", issueCount: 4, location: "Zone C", notes: "Brake failure" },
+            { id: "CART-010", type: "Baggage Cart", status: "OK", lastUpdated: "2026-04-23 09:00", issueCount: 0, location: "Zone B", notes: "" },
+            { id: "CART-011", type: "Baggage Cart", status: "Minor", lastUpdated: "2026-04-23 08:35", issueCount: 1, location: "Zone A", notes: "Loose handle" },
+            { id: "CART-012", type: "Baggage Cart", status: "OK", lastUpdated: "2026-04-23 09:15", issueCount: 0, location: "Zone D", notes: "" },
+            { id: "CART-013", type: "Baggage Cart", status: "OK", lastUpdated: "2026-04-23 09:05", issueCount: 0, location: "Zone C", notes: "" },
+            { id: "CART-014", type: "Baggage Cart", status: "Unsafe", lastUpdated: "2026-04-23 08:10", issueCount: 5, location: "Zone B", notes: "Wheel detached" },
+            { id: "CART-015", type: "Baggage Cart", status: "OK", lastUpdated: "2026-04-23 09:20", issueCount: 0, location: "Zone A", notes: "" },
+            { id: "CART-016", type: "Baggage Cart", status: "Minor", lastUpdated: "2026-04-23 08:25", issueCount: 2, location: "Zone D", notes: "Alignment issue" },
+            { id: "CART-017", type: "Baggage Cart", status: "OK", lastUpdated: "2026-04-23 09:10", issueCount: 0, location: "Zone C", notes: "" },
+            { id: "CART-018", type: "Baggage Cart", status: "OK", lastUpdated: "2026-04-23 09:00", issueCount: 0, location: "Zone B", notes: "" },
+            { id: "CART-019", type: "Baggage Cart", status: "Minor", lastUpdated: "2026-04-23 08:50", issueCount: 1, location: "Zone A", notes: "Tire pressure low" },
+            { id: "CART-020", type: "Baggage Cart", status: "OK", lastUpdated: "2026-04-23 09:05", issueCount: 0, location: "Zone D", notes: "" }
+        ];
+
+        // Load from localStorage or use initial data
+        let cartData = JSON.parse(localStorage.getItem('baggageCartData')) || INITIAL_DATA;
+        let currentTab = 'all';
+        let currentCartId = null;
+        let searchQuery = '';
+
+        // Save to localStorage
+        function saveData() {
+            localStorage.setItem('baggageCartData', JSON.stringify(cartData));
+        }
+
+        // ============ RENDER FUNCTIONS ============
+        function getFilteredData() {
+            let filtered = [...cartData];
+
+            // Apply tab filter
+            if (currentTab === 'unsafe') {
+                filtered = filtered.filter(c => c.status === 'Unsafe');
+            } else if (currentTab === 'minor') {
+                filtered = filtered.filter(c => c.status === 'Minor');
+            } else if (currentTab === 'ok') {
+                filtered = filtered.filter(c => c.status === 'OK');
+            }
+
+            // Apply search
+            if (searchQuery.trim()) {
+                const q = searchQuery.toLowerCase().trim();
+                filtered = filtered.filter(c =>
+                    c.id.toLowerCase().includes(q) ||
+                    c.location.toLowerCase().includes(q) ||
+                    c.notes.toLowerCase().includes(q) ||
+                    c.type.toLowerCase().includes(q)
+                );
+            }
+
+            return filtered;
+        }
+
+        function renderList() {
+            const listEl = document.getElementById('cartList');
+            const filtered = getFilteredData();
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `
+                    <div class="empty-state">
+                        <div class="emoji">📭</div>
+                        <p>No assets found</p>
+                        <p style="font-size:13px;margin-top:4px;">Try a different search or filter</p>
+                    </div>`;
+            } else {
+                listEl.innerHTML = filtered.map(cart => `
+                    <div class="cart-item" onclick="openDetail('${cart.id}')">
+                        <div class="cart-icon ${cart.status.toLowerCase()}">
+                            ${cart.status === 'OK' ? '✓' : cart.status === 'Minor' ? '!' : '✕'}
+                        </div>
+                        <div class="cart-info">
+                            <div class="cart-id">${cart.id}</div>
+                            <div class="cart-type">${cart.type}</div>
+                        </div>
+                        <div class="cart-meta">
+                            <div>
+                                <span class="status-dot ${cart.status.toLowerCase()}"></span>
+                                <span class="status-label ${cart.status.toLowerCase()}">${cart.status}</span>
+                            </div>
+                            <div class="cart-location">📍 ${cart.location}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Update counts
+            updateCounts();
+        }
+
+        function updateCounts() {
+            const all = cartData.length;
+            const unsafe = cartData.filter(c => c.status === 'Unsafe').length;
+            const minor = cartData.filter(c => c.status === 'Minor').length;
+            const ok = cartData.filter(c => c.status === 'OK').length;
+
+            document.getElementById('count-all').textContent = all;
+            document.getElementById('count-unsafe').textContent = unsafe;
+            document.getElementById('count-minor').textContent = minor;
+            document.getElementById('count-ok').textContent = ok;
+        }
+
+        // ============ MODAL ============
+        function openDetail(cartId) {
+            const cart = cartData.find(c => c.id === cartId);
+            if (!cart) return;
+
+            currentCartId = cartId;
+            document.getElementById('modalTitle').textContent = cart.id;
+            document.getElementById('modalStatus').textContent = cart.status;
+            document.getElementById('modalUpdated').textContent = cart.lastUpdated;
+            document.getElementById('modalIssues').textContent = cart.issueCount;
+            document.getElementById('modalLocation').textContent = cart.location;
+
+            const notesRow = document.getElementById('modalNotesRow');
+            const notesEl = document.getElementById('modalNotes');
+            if (cart.notes) {
+                notesRow.style.display = 'flex';
+                notesEl.textContent = cart.notes;
+            } else {
+                notesRow.style.display = 'none';
+            }
+
+            // Highlight active status button
+            document.querySelectorAll('.modal-actions .btn').forEach(b => b.classList.remove('active-btn'));
+            if (cart.status === 'OK') document.getElementById('btnOk').classList.add('active-btn');
+            if (cart.status === 'Minor') document.getElementById('btnMinor').classList.add('active-btn');
+            if (cart.status === 'Unsafe') document.getElementById('btnUnsafe').classList.add('active-btn');
+
+            document.getElementById('modalOverlay').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+            currentCartId = null;
+        }
+
+        function updateStatus(newStatus) {
+            if (!currentCartId) return;
+            const cart = cartData.find(c => c.id === currentCartId);
+            if (!cart) return;
+
+            const now = new Date();
+            const timestamp = now.toISOString().replace('T', ' ').substring(0, 16);
+            // Format: 2026-04-24 11:33
+            const formatted = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+            cart.status = newStatus;
+            cart.lastUpdated = formatted;
+            cart.issueCount = newStatus === 'Unsafe' ? cart.issueCount + 1 :
+                              newStatus === 'Minor' ? Math.max(1, cart.issueCount) : cart.issueCount;
+
+            saveData();
+            renderList();
+            openDetail(currentCartId); // Refresh modal
+            showToast(`✅ ${currentCartId} marked as ${newStatus}`);
+        }
+
+        // ============ TOAST ============
+        function showToast(message) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
+        // ============ QR SCAN SIMULATION ============
+        function simulateQRScan() {
+            // In production, this would use the device camera and a QR scanning library
+            // For demo, we'll prompt for a cart ID (simulating a QR code scan)
+            const cartId = prompt('📷 Scan QR Code\n\nEnter Cart ID (e.g., CART-001):');
+            if (cartId) {
+                const normalized = cartId.toUpperCase().trim();
+                const cart = cartData.find(c => c.id === normalized);
+                if (cart) {
+                    openDetail(normalized);
+                } else {
+                    showToast('❌ Asset not found: ' + normalized);
+                }
+            }
+        }
+
+        // ============ EVENT LISTENERS ============
+        // Tabs
+        document.getElementById('tabs').addEventListener('click', (e) => {
+            const tab = e.target.closest('.tab');
+            if (!tab) return;
+            currentTab = tab.dataset.tab;
+
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            // Sync bottom nav
+            document.querySelectorAll('.bottom-nav .nav-item').forEach(n => n.classList.remove('active'));
+            const navMatch = document.querySelector(`.bottom-nav .nav-item[data-nav="${currentTab}"]`);
+            if (navMatch) navMatch.classList.add('active');
+
+            renderList();
+        });
+
+        // Bottom nav
+        document.querySelector('.bottom-nav').addEventListener('click', (e) => {
+            const nav = e.target.closest('.nav-item');
+            if (!nav) return;
+            currentTab = nav.dataset.nav;
+
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            const tabMatch = document.querySelector(`.tab[data-tab="${currentTab}"]`);
+            if (tabMatch) tabMatch.classList.add('active');
+
+            document.querySelectorAll('.bottom-nav .nav-item').forEach(n => n.classList.remove('active'));
+            nav.classList.add('active');
+
+            renderList();
+        });
+
+        // Search
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            renderList();
+        });
+
+        // Modal close
+        document.getElementById('modalOverlay').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('modalOverlay')) {
+                closeModal();
+            }
+        });
+        document.getElementById('btnClose').addEventListener('click', closeModal);
+
+        // Status buttons
+        document.getElementById('btnOk').addEventListener('click', () => updateStatus('OK'));
+        document.getElementById('btnMinor').addEventListener('click', () => updateStatus('Minor'));
+        document.getElementById('btnUnsafe').addEventListener('click', () => updateStatus('Unsafe'));
+
+        // QR FAB
+        document.getElementById('qrFab').addEventListener('click', simulateQRScan);
+
+        // Keyboard shortcut for QR (for desktop testing)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'q' && e.ctrlKey) {
+                e.preventDefault();
+                simulateQRScan();
+            }
+        });
+
+        // ============ INITIAL RENDER ============
+        renderList();
+
+        console.log('🚛 Baggage Cart Health System Ready');
+        console.log('📱 Tap a cart to view/edit status');
+        console.log('📷 Use the blue button or Ctrl+Q to simulate QR scan');
+        console.log('💾 Data persists in browser localStorage');
+    </script>
+</body>
+</html>
